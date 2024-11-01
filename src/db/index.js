@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import { DB_NAME } from "../constants.js";
 import logger from "../logger/winston.logger.js";
 
+//type of it
+
 /** @type {typeof mongoose | undefined} */
 export let dbInstance = undefined;
 
