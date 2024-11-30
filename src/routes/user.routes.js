@@ -89,22 +89,24 @@ router.route("/google").get(
     res.send("redirecting to google...");
   }
 );
-
-router.route("/github").get(
-  passport.authenticate("github", {
-    scope: ["profile", "email"],
-  }),
-  (req, res) => {
-    res.send("redirecting to github...");
-  }
-);
-
-router
-  .route("/google/callback")
-  .get(passport.authenticate("google"), handleSocialLogin);
-
-router
-  .route("/github/callback")
-  .get(passport.authenticate("github"), handleSocialLogin);
+router.route("/google/callback").get((req, res, next) => {
+  passport.authenticate("google", async (err, user) => {
+    if (err) {
+      // Redirect to failure URL with an error message passed as a query param
+      return res.redirect(
+        `${process.env.CLIENT_SSO_FAILURE_URL}?error=${encodeURIComponent(
+          err.message
+        )}`
+      );
+    }
+    if (!user) {
+      return res.redirect(
+        `${process.env.CLIENT_SSO_FAILURE_URL}?error=Authentication failed`
+      );
+    }
+    req.user = user; // assign user to req object
+    next(); // move to the next middleware (handleSocialLogin)
+  })(req, res, next);
+}, handleSocialLogin);
 
 export default router;
