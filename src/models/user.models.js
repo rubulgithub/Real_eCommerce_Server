@@ -59,9 +59,6 @@ const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
-    refreshToken: {
-      type: String,
-    },
     forgotPasswordToken: {
       type: String,
     },
@@ -130,15 +127,15 @@ userSchema.methods.generateAccessToken = function () {
   );
 };
 
-userSchema.methods.generateRefreshToken = function () {
-  return jwt.sign(
-    {
-      _id: this._id,
-    },
-    process.env.REFRESH_TOKEN_SECRET,
-    { expiresIn: process.env.REFRESH_TOKEN_EXPIRY }
-  );
-};
+// userSchema.methods.generateRefreshToken = function () {
+//   return jwt.sign(
+//     {
+//       _id: this._id,
+//     },
+//     process.env.REFRESH_TOKEN_SECRET,
+//     { expiresIn: process.env.REFRESH_TOKEN_EXPIRY }
+//   );
+// };
 
 /**
  * @description Method responsible for generating tokens for email verification, password reset etc.

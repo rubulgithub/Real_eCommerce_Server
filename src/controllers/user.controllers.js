@@ -21,13 +21,13 @@ const generateAccessAndRefreshTokens = async (userId) => {
     const user = await User.findById(userId);
 
     const accessToken = user.generateAccessToken();
-    const refreshToken = user.generateRefreshToken();
+    // const refreshToken = user.generateRefreshToken();
 
     // attach refresh token to the user document to avoid refreshing the access token with multiple refresh tokens
-    user.refreshToken = refreshToken;
+    // user.refreshToken = refreshToken;
 
     await user.save({ validateBeforeSave: false });
-    return { accessToken, refreshToken };
+    return { accessToken };
   } catch (error) {
     throw new ApiError(
       500,
@@ -87,7 +87,7 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   const createdUser = await User.findById(user._id).select(
-    "-password -refreshToken -emailVerificationToken -emailVerificationExpiry"
+    "-password -emailVerificationToken -emailVerificationExpiry"
   );
 
   if (!createdUser) {
@@ -140,13 +140,11 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Invalid user credentials");
   }
 
-  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
-    user._id
-  );
+  const { accessToken } = await generateAccessAndRefreshTokens(user._id);
 
   // get the user document ignoring the password and refreshToken field
   const loggedInUser = await User.findById(user._id).select(
-    "-password -refreshToken -emailVerificationToken -emailVerificationExpiry"
+    "-password -emailVerificationToken -emailVerificationExpiry"
   );
 
   // TODO: Add more options to make cookie more secure and reliable
@@ -158,27 +156,16 @@ const loginUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .cookie("accessToken", accessToken, options) // set the access token in the cookie
-    .cookie("refreshToken", refreshToken, options) // set the refresh token in the cookie
     .json(
       new ApiResponse(
         200,
-        { user: loggedInUser, accessToken, refreshToken }, // send access and refresh token in response if client decides to save them by themselves
+        { user: loggedInUser, accessToken }, // send access and refresh token in response if client decides to save them by themselves
         "User logged in successfully"
       )
     );
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
-  await User.findByIdAndUpdate(
-    req.user._id,
-    {
-      $set: {
-        refreshToken: "",
-      },
-    },
-    { new: true }
-  );
-
   const options = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -187,7 +174,6 @@ const logoutUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .clearCookie("accessToken", options)
-    .clearCookie("refreshToken", options)
     .json(new ApiResponse(200, {}, "User logged out"));
 });
 
@@ -276,6 +262,7 @@ const resendEmailVerification = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "Mail has been sent to your mail ID"));
 });
 
+/*
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
     req.cookies.refreshToken || req.body.refreshToken;
@@ -324,6 +311,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     throw new ApiError(401, error?.message || "Invalid refresh token");
   }
 });
+*/
 
 const forgotPasswordRequest = asyncHandler(async (req, res) => {
   const { email } = req.body;
@@ -454,23 +442,23 @@ const handleSocialLogin = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User does not exist");
   }
 
-  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
-    user._id
-  );
+  const { accessToken } = await generateAccessAndRefreshTokens(user._id);
 
   const options = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
   };
 
-  return res
-    .status(301)
-    .cookie("accessToken", accessToken, options) // set the access token in the cookie
-    .cookie("refreshToken", refreshToken, options) // set the refresh token in the cookie
-    .redirect(
-      // redirect user to the frontend with access and refresh token in case user is not using cookies
-      `${process.env.CLIENT_SSO_REDIRECT_URL}?accessToken=${accessToken}&refreshToken=${refreshToken}`
-    );
+  return (
+    res
+      .status(301)
+      .cookie("accessToken", accessToken, options) // set the access token in the cookie
+      // .cookie("refreshToken", refreshToken, options) // set the refresh token in the cookie
+      .redirect(
+        // redirect user to the frontend with access and refresh token in case user is not using cookies
+        `${process.env.CLIENT_SSO_REDIRECT_URL}?accessToken=${accessToken}&refreshToken=${refreshToken}`
+      )
+  );
 });
 
 const updateUserAvatar = asyncHandler(async (req, res) => {
@@ -518,7 +506,6 @@ export {
   handleSocialLogin,
   loginUser,
   logoutUser,
-  refreshAccessToken,
   registerUser,
   resendEmailVerification,
   resetForgottenPassword,
