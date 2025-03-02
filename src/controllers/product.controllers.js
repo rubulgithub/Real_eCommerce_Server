@@ -193,21 +193,22 @@ const getProductById = asyncHandler(async (req, res) => {
 
 const getProductsByCategory = asyncHandler(async (req, res) => {
   const { categoryId } = req.params;
-  const { page = 1, limit = 10 } = req.query;
+  const category = await Category.findById(categoryId);
 
-  const category = await Category.findById(categoryId).select("name _id");
+  // Get all child categories (supports unlimited nesting)
+  const getChildIds = async (parentId) => {
+    const children = await Category.find({ parent: parentId });
+    let ids = [parentId];
+    for (const child of children) {
+      ids = ids.concat(await getChildIds(child._id));
+    }
+    return ids;
+  };
 
-  if (!category) {
-    throw new ApiError(404, "Category does not exist");
-  }
+  const categoryIds = await getChildIds(categoryId);
 
   const productAggregate = Product.aggregate([
-    {
-      // match the products with provided category
-      $match: {
-        category: new mongoose.Types.ObjectId(categoryId),
-      },
-    },
+    { $match: { category: { $in: categoryIds } } },
   ]);
 
   const products = await Product.aggregatePaginate(

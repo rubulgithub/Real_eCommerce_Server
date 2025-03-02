@@ -2,10 +2,11 @@ import { Router } from "express";
 import passport from "passport";
 import { UserRolesEnum } from "../constants.js";
 import {
-  assignRole,
   changeCurrentPassword,
   forgotPasswordRequest,
+  getAllUsers,
   getCurrentUser,
+  getUserStats,
   handleSocialLogin,
   loginUser,
   logoutUser,
@@ -13,6 +14,7 @@ import {
   resendEmailVerification,
   resetForgottenPassword,
   updateUserAvatar,
+  updateUserRole,
   verifyEmail,
 } from "../controllers/user.controllers.js";
 import {
@@ -68,15 +70,35 @@ router
 router
   .route("/resend-email-verification")
   .post(verifyJWT, resendEmailVerification);
+
+// Admin user management routes
 router
-  .route("/assign-role/:userId")
-  .post(
+  .route("/admin/users")
+  .get(
+    verifyJWT,
+    verifyPermission([UserRolesEnum.ADMIN]),
+    validate,
+    getAllUsers
+  );
+
+router
+  .route("/admin/users/stats")
+  .get(
+    verifyJWT,
+    verifyPermission([UserRolesEnum.ADMIN]),
+    validate,
+    getUserStats
+  );
+
+router
+  .route("/admin/users/:userId/role")
+  .patch(
     verifyJWT,
     verifyPermission([UserRolesEnum.ADMIN]),
     mongoIdPathVariableValidator("userId"),
     userAssignRoleValidator(),
     validate,
-    assignRole
+    updateUserRole
   );
 
 // SSO routes

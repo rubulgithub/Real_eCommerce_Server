@@ -186,3 +186,26 @@ export const getMongoosePaginationOptions = ({
 export const getRandomNumber = (max) => {
   return Math.floor(Math.random() * max);
 };
+
+// Helper function for date filtering
+export const getDateFilter = (period) => {
+  const now = new Date();
+  const filter = {};
+
+  switch (period) {
+    case "24h":
+      filter.$gte = new Date(now - 24 * 60 * 60 * 1000);
+      break;
+    case "7d":
+      filter.$gte = new Date(now - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case "30d":
+      filter.$gte = new Date(now - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case "1y":
+      filter.$gte = new Date(now - 365 * 24 * 60 * 60 * 1000);
+      break;
+  }
+
+  return filter;
+};

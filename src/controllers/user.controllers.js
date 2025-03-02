@@ -6,6 +6,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import {
+  getDateFilter,
   getLocalPath,
   getStaticFilePath,
   removeLocalFile,
@@ -16,15 +17,11 @@ import {
   sendEmail,
 } from "../utils/mail.js";
 
-const generateAccessAndRefreshTokens = async (userId) => {
+const generateAccessToken = async (userId) => {
   try {
     const user = await User.findById(userId);
 
     const accessToken = user.generateAccessToken();
-    // const refreshToken = user.generateRefreshToken();
-
-    // attach refresh token to the user document to avoid refreshing the access token with multiple refresh tokens
-    // user.refreshToken = refreshToken;
 
     await user.save({ validateBeforeSave: false });
     return { accessToken };
@@ -140,9 +137,9 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Invalid user credentials");
   }
 
-  const { accessToken } = await generateAccessAndRefreshTokens(user._id);
+  const { accessToken } = await generateAccessToken(user._id);
 
-  // get the user document ignoring the password and refreshToken field
+  // get the user document ignoring the password field
   const loggedInUser = await User.findById(user._id).select(
     "-password -emailVerificationToken -emailVerificationExpiry"
   );
@@ -159,7 +156,7 @@ const loginUser = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        { user: loggedInUser, accessToken }, // send access and refresh token in response if client decides to save them by themselves
+        { user: loggedInUser, accessToken }, // send access token in response if client decides to save them by themselves
         "User logged in successfully"
       )
     );
@@ -262,57 +259,6 @@ const resendEmailVerification = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "Mail has been sent to your mail ID"));
 });
 
-/*
-const refreshAccessToken = asyncHandler(async (req, res) => {
-  const incomingRefreshToken =
-    req.cookies.refreshToken || req.body.refreshToken;
-
-  if (!incomingRefreshToken) {
-    throw new ApiError(401, "Unauthorized request");
-  }
-
-  try {
-    const decodedToken = jwt.verify(
-      incomingRefreshToken,
-      process.env.REFRESH_TOKEN_SECRET
-    );
-    const user = await User.findById(decodedToken?._id);
-    if (!user) {
-      throw new ApiError(401, "Invalid refresh token");
-    }
-
-    // check if incoming refresh token is same as the refresh token attached in the user document
-    // This shows that the refresh token is used or not
-    // Once it is used, we are replacing it with new refresh token below
-    if (incomingRefreshToken !== user?.refreshToken) {
-      // If token is valid but is used already
-      throw new ApiError(401, "Refresh token is expired or used");
-    }
-    const options = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-    };
-
-    const { accessToken, refreshToken: newRefreshToken } =
-      await generateAccessAndRefreshTokens(user._id);
-
-    return res
-      .status(200)
-      .cookie("accessToken", accessToken, options)
-      .cookie("refreshToken", newRefreshToken, options)
-      .json(
-        new ApiResponse(
-          200,
-          { accessToken, refreshToken: newRefreshToken },
-          "Access token refreshed"
-        )
-      );
-  } catch (error) {
-    throw new ApiError(401, error?.message || "Invalid refresh token");
-  }
-});
-*/
-
 const forgotPasswordRequest = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
@@ -412,7 +358,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, {}, "Password changed successfully"));
 });
-
+/*
 const assignRole = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const { role } = req.body;
@@ -428,6 +374,7 @@ const assignRole = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, {}, "Role changed for the user"));
 });
+*/
 
 const getCurrentUser = asyncHandler(async (req, res) => {
   return res
@@ -442,23 +389,20 @@ const handleSocialLogin = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User does not exist");
   }
 
-  const { accessToken } = await generateAccessAndRefreshTokens(user._id);
+  const { accessToken } = await generateAccessToken(user._id);
 
   const options = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
   };
 
-  return (
-    res
-      .status(301)
-      .cookie("accessToken", accessToken, options) // set the access token in the cookie
-      // .cookie("refreshToken", refreshToken, options) // set the refresh token in the cookie
-      .redirect(
-        // redirect user to the frontend with access and refresh token in case user is not using cookies
-        `${process.env.CLIENT_SSO_REDIRECT_URL}?accessToken=${accessToken}&refreshToken=${refreshToken}`
-      )
-  );
+  return res
+    .status(301)
+    .cookie("accessToken", accessToken, options) // set the access token in the cookie
+    .redirect(
+      // redirect user to the frontend with access token in case user is not using cookies
+      `${process.env.CLIENT_SSO_REDIRECT_URL}?accessToken=${accessToken}`
+    );
 });
 
 const updateUserAvatar = asyncHandler(async (req, res) => {
@@ -486,9 +430,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
       },
     },
     { new: true }
-  ).select(
-    "-password -refreshToken -emailVerificationToken -emailVerificationExpiry"
-  );
+  ).select("-password -emailVerificationToken -emailVerificationExpiry");
 
   // remove the old avatar
   removeLocalFile(user.avatar.localPath);
@@ -498,8 +440,141 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, updatedUser, "Avatar updated successfully"));
 });
 
+// Add these new controllers to your existing user controller file
+
+const getAllUsers = asyncHandler(async (req, res) => {
+  const {
+    page = 1,
+    limit = 10,
+    search = "",
+    role = "",
+    sort = "-createdAt",
+  } = req.query;
+
+  const pipeline = [];
+
+  // Match stage
+  const matchStage = {};
+  if (search) {
+    matchStage.$or = [
+      { username: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } },
+    ];
+  }
+  if (role && AvailableUserRoles.includes(role)) {
+    matchStage.role = role;
+  }
+  if (Object.keys(matchStage).length > 0) {
+    pipeline.push({ $match: matchStage });
+  }
+
+  // Sort stage
+  const sortStage = {};
+  if (sort) {
+    const sortDirection = sort.startsWith("-") ? -1 : 1;
+    const sortField = sort.replace("-", "");
+    sortStage[sortField] = sortDirection;
+    pipeline.push({ $sort: sortStage });
+  }
+
+  // Projection stage
+  pipeline.push({
+    $project: {
+      password: 0,
+      forgotPasswordToken: 0,
+      emailVerificationToken: 0,
+      emailVerificationExpiry: 0,
+    },
+  });
+
+  const options = {
+    page: parseInt(page),
+    limit: parseInt(limit),
+    customLabels: {
+      docs: "users",
+      totalDocs: "totalUsers",
+    },
+  };
+
+  const users = await User.aggregatePaginate(pipeline, options);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, users, "Users fetched successfully"));
+});
+
+const getUserStats = asyncHandler(async (req, res) => {
+  const { period = "7d" } = req.query;
+  const dateFilter = getDateFilter(period);
+
+  const stats = await User.aggregate([
+    {
+      $facet: {
+        totalUsers: [{ $count: "count" }],
+        roleDistribution: [
+          { $group: { _id: "$role", count: { $sum: 1 } } },
+          { $project: { role: "$_id", count: 1, _id: 0 } },
+        ],
+        recentSignups: [
+          { $sort: { createdAt: -1 } },
+          { $limit: 5 },
+          { $project: { username: 1, email: 1, createdAt: 1 } },
+        ],
+        growthData: [
+          { $match: { createdAt: dateFilter } },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+              },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: 1 } },
+          { $project: { date: "$_id", count: 1, _id: 0 } },
+        ],
+      },
+    },
+    {
+      $project: {
+        totalUsers: { $arrayElemAt: ["$totalUsers.count", 0] } || 0,
+        roleDistribution: 1,
+        recentSignups: 1,
+        growthData: 1,
+      },
+    },
+  ]);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, stats[0], "User statistics fetched successfully")
+    );
+});
+
+const updateUserRole = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { role } = req.body;
+
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { $set: { role } },
+    {
+      new: true,
+      runValidators: true,
+    }
+  ).select("-password -emailVerificationToken -emailVerificationExpiry");
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "User role updated successfully"));
+});
+
 export {
-  assignRole,
   changeCurrentPassword,
   forgotPasswordRequest,
   getCurrentUser,
@@ -511,4 +586,7 @@ export {
   resetForgottenPassword,
   updateUserAvatar,
   verifyEmail,
+  getAllUsers,
+  getUserStats,
+  updateUserRole,
 };

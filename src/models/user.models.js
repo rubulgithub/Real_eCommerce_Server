@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import mongoose, { Schema } from "mongoose";
+import aggregatePaginate from "mongoose-aggregate-paginate-v2";
 import {
   AvailableSocialLogins,
   AvailableUserRoles,
@@ -100,14 +101,6 @@ userSchema.post("save", async function (user, next) {
       items: [],
     });
   }
-
-  // // Setup necessary social media models for the user
-  // if (!socialProfile) {
-  //   await SocialProfile.create({
-  //     owner: user._id,
-  //   });
-  // }
-  // next();
 });
 
 userSchema.methods.isPasswordCorrect = async function (password) {
@@ -127,16 +120,6 @@ userSchema.methods.generateAccessToken = function () {
   );
 };
 
-// userSchema.methods.generateRefreshToken = function () {
-//   return jwt.sign(
-//     {
-//       _id: this._id,
-//     },
-//     process.env.REFRESH_TOKEN_SECRET,
-//     { expiresIn: process.env.REFRESH_TOKEN_EXPIRY }
-//   );
-// };
-
 /**
  * @description Method responsible for generating tokens for email verification, password reset etc.
  */
@@ -155,5 +138,7 @@ userSchema.methods.generateTemporaryToken = function () {
 
   return { unHashedToken, hashedToken, tokenExpiry };
 };
+
+userSchema.plugin(aggregatePaginate);
 
 export const User = mongoose.model("User", userSchema);
