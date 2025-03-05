@@ -9,7 +9,6 @@ import passport from "passport";
 import path from "path";
 import requestIp from "request-ip";
 import { Server } from "socket.io";
-import swaggerUi from "swagger-ui-express";
 import { fileURLToPath } from "url";
 import YAML from "yaml";
 import { DB_NAME } from "./constants.js";
@@ -21,14 +20,6 @@ import { ApiResponse } from "./utils/ApiResponse.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const file = fs.readFileSync(path.resolve(__dirname, "./swagger.yaml"), "utf8");
-const swaggerDocument = YAML.parse(
-  file?.replace(
-    "- url: ${{server}}",
-    `- url: ${process.env.FREEAPI_HOST_URL || "http://localhost:8080"}/api/v1`
-  )
-);
 
 const app = express();
 
@@ -127,54 +118,7 @@ app.use("/api/v1/ecommerce/coupons", couponRouter);
 
 initializeSocketIO(io);
 
-// // ! 🚫 Danger Zone
-// app.delete("/api/v1/reset-db", avoidInProduction, async (req, res) => {
-//   if (dbInstance) {
-//     // Drop the whole DB
-//     await dbInstance.connection.db.dropDatabase({
-//       dbName: DB_NAME,
-//     });
-
-//     const directory = "./public/images";
-
-//     // Remove all product images from the file system
-//     fs.readdir(directory, (err, files) => {
-//       if (err) {
-//         // fail silently
-//         logger.error("Error while removing the images: ", err);
-//       } else {
-//         for (const file of files) {
-//           if (file === ".gitkeep") continue;
-//           fs.unlink(path.join(directory, file), (err) => {
-//             if (err) throw err;
-//           });
-//         }
-//       }
-//     });
-//     // remove the seeded users if exist
-//     fs.unlink("./public/temp/seed-credentials.json", (err) => {
-//       // fail silently
-//       if (err) logger.error("Seed credentials are missing.");
-//     });
-//     return res
-//       .status(200)
-//       .json(new ApiResponse(200, null, "Database dropped successfully"));
-//   }
-//   throw new ApiError(500, "Something went wrong while dropping the database");
-// });
-
-// * API DOCS
-// ? Keeping swagger code at the end so that we can load swagger on "/" route
-app.use(
-  "/",
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerDocument, {
-    swaggerOptions: {
-      docExpansion: "none", // keep all the sections collapsed by default
-    },
-    customSiteTitle: "FreeAPI docs",
-  })
-);
+const directory = "./public/images";
 
 // common error handling middleware
 app.use(errorHandler);
