@@ -543,11 +543,6 @@ const updateUserRole = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const { role } = req.body;
 
-  // Validate role
-  if (!AvailableUserRoles.includes(role)) {
-    throw new ApiError(400, "Invalid role");
-  }
-
   const user = await User.findByIdAndUpdate(
     userId,
     { $set: { role } },
