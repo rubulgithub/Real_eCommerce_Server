@@ -3,20 +3,15 @@ import cors from "cors";
 import express from "express";
 import { rateLimit } from "express-rate-limit";
 import session from "express-session";
-import fs from "fs";
 import { createServer } from "http";
 import passport from "passport";
 import path from "path";
 import requestIp from "request-ip";
 import { Server } from "socket.io";
 import { fileURLToPath } from "url";
-import YAML from "yaml";
-import { DB_NAME } from "./constants.js";
-import { dbInstance } from "./db/index.js";
 import morganMiddleware from "./logger/morgan.logger.js";
 import { initializeSocketIO } from "./socket/index.js";
 import { ApiError } from "./utils/ApiError.js";
-import { ApiResponse } from "./utils/ApiResponse.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,10 +33,7 @@ app.set("io", io); // using set method to mount the `io` instance on the app to 
 // global middlewares
 app.use(
   cors({
-    origin:
-      process.env.CORS_ORIGIN === "*"
-        ? "*" // This might give CORS error for some origins due to credentials set to true
-        : process.env.CORS_ORIGIN?.split(","), // For multiple cors origin for production. Refer https://github.com/hiteshchoudhary/apihub/blob/a846abd7a0795054f48c7eb3e71f3af36478fa96/.env.sample#L12C1-L12C12
+    origin: process.env.CORS_ORIGIN,
     credentials: true,
   })
 );
