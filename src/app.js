@@ -9,11 +9,8 @@ import path from "path";
 import requestIp from "request-ip";
 import { Server } from "socket.io";
 import { fileURLToPath } from "url";
-import { DB_NAME } from "./constants.js";
-import { dbInstance } from "./db/index.js";
 import morganMiddleware from "./logger/morgan.logger.js";
 import { initializeSocketIO } from "./socket/index.js";
-import { ApiError } from "./utils/ApiError.js";
 import { ApiResponse } from "./utils/ApiResponse.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,7 +24,7 @@ const io = new Server(httpServer, {
   cors: {
     origin:
       process.env.CORS_ORIGIN?.split(",").map((origin) => origin.trim()) || [],
-    credentials: process.env.CORS_ORIGIN !== "*",
+    credentials: true,
   },
 });
 
@@ -38,7 +35,7 @@ app.use(
   cors({
     origin:
       process.env.CORS_ORIGIN?.split(",").map((origin) => origin.trim()) || [],
-    credentials: process.env.CORS_ORIGIN !== "*",
+    credentials: true,
   })
 );
 
@@ -65,15 +62,18 @@ app.use(express.static("public"));
 app.use(cookieParser());
 
 // Session Middleware (Security Enhanced)
+app.use(cookieParser());
+
 app.use(
   session({
     secret: process.env.EXPRESS_SESSION_SECRET,
-    resave: false, // Avoids unnecessary session storage
-    saveUninitialized: false, // Only save sessions when modified
+    resave: false,
+    saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Secure cookies in production
-      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production", // Secure in production
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // Allow cross-site cookies
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     },
   })
 );
