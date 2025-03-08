@@ -59,7 +59,6 @@ app.use(limiter);
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
-app.use(cookieParser());
 
 // Session Middleware (Security Enhanced)
 app.use(cookieParser());
@@ -73,7 +72,6 @@ app.use(
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Secure in production
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // Allow cross-site cookies
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     },
   })
 );
