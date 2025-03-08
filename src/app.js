@@ -71,8 +71,14 @@ app.use(cookieParser());
 app.use(
   session({
     secret: process.env.EXPRESS_SESSION_SECRET,
-    resave: true,
-    saveUninitialized: true,
+    resave: false, // Avoid unnecessary session resaving
+    saveUninitialized: false, // Only save sessions when modified
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // Secure cookies in production
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // Allow cross-site cookies
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    },
   })
 );
 
