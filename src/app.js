@@ -107,16 +107,6 @@ app.use("/api/v1/ecommerce/coupons", couponRouter);
 // Initialize Socket.IO
 initializeSocketIO(io);
 
-// Ensure Database is Connected Before Exporting
-dbInstance
-  .then(() => {
-    console.log(`📌 Connected to Database: ${DB_NAME}`);
-  })
-  .catch((err) => {
-    console.error("❌ Database Connection Failed:", err);
-    process.exit(1);
-  });
-
 // Error Handling Middleware
 app.use(errorHandler);
 
