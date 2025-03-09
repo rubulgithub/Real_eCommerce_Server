@@ -492,6 +492,7 @@ const getAllUsers = asyncHandler(async (req, res) => {
 
 const getUserStats = asyncHandler(async (req, res) => {
   const { period = "7d" } = req.query;
+  console.log(typeof period);
   const dateFilter = getDateFilter(period);
 
   const stats = await User.aggregate([

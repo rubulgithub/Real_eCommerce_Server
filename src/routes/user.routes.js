@@ -91,7 +91,7 @@ router
   );
 
 router
-  .route("/admin/users/:userId/role")
+  .route("/admin/users/:userId")
   .patch(
     verifyJWT,
     verifyPermission([UserRolesEnum.ADMIN]),
