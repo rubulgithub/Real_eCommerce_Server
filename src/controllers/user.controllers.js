@@ -427,8 +427,6 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, updatedUser, "Avatar updated successfully"));
 });
 
-// Add these new controllers to your existing user controller file
-
 const getAllUsers = asyncHandler(async (req, res) => {
   const {
     page = 1,
