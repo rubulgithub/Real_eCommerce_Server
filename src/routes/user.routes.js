@@ -126,6 +126,9 @@ router.route("/google/callback").get((req, res, next) => {
         `${process.env.CLIENT_SSO_FAILURE_URL}?error=Authentication failed`
       );
     }
+
+    console.log("Redirecting to:", process.env.CLIENT_SSO_REDIRECT_URL);
+
     req.user = user; // assign user to req object
     next(); // move to the next middleware (handleSocialLogin)
   })(req, res, next);
