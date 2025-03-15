@@ -381,15 +381,14 @@ const handleSocialLogin = asyncHandler(async (req, res) => {
   const options = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
+    sameSite: "strict", // Prevent CSRF attacks
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   };
 
   return res
     .status(301)
-    .cookie("accessToken", accessToken, options) // set the access token in the cookie
-    .redirect(
-      // redirect user to the frontend with access token in case user is not using cookies
-      `${process.env.CLIENT_SSO_REDIRECT_URL}?accessToken=${accessToken}`
-    );
+    .cookie("accessToken", accessToken, options) // Set the access token in the cookie
+    .redirect(process.env.CLIENT_SSO_REDIRECT_URL); // Redirect to the frontend
 });
 
 const updateUserAvatar = asyncHandler(async (req, res) => {
