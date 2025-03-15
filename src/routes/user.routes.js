@@ -105,6 +105,7 @@ router
 router.route("/google").get(
   passport.authenticate("google", {
     scope: ["profile", "email"],
+    prompt: "select_account",
   }),
   (req, res) => {
     res.send("redirecting to google...");
