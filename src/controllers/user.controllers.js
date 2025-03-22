@@ -371,12 +371,15 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 
 const handleSocialLogin = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user?._id);
+  console.log("User:", user);
 
   if (!user) {
     throw new ApiError(404, "User does not exist");
   }
 
   const { accessToken } = await generateAccessToken(user._id);
+
+  console.log("Access:", accessToken);
 
   const options = {
     httpOnly: true,
